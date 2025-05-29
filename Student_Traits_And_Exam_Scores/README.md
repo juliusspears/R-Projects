@@ -5,4 +5,4 @@ simulated data based off of real-world trends of student habits across diverse p
 sample of 1,000 student records, including traits such as study hours, sleep hours, diet, social media hours,
 and mental health ratings.
 
-This project has a folder for the final results, R-scripts, raw data, R-markdown files, and plots.
+This project has a folder for its final results/findings, R-scripts, raw data, R-markdown files, and plots.
