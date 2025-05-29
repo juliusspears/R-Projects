@@ -275,5 +275,3 @@ legend('topleft', legend = levels(studhabts$parental_education_level),
 
 #Anova Test
 summary(aov(exam_score ~ parental_education_level, data = studhabts))
-
-
