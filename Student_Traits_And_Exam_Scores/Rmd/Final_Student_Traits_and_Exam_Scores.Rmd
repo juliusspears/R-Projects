@@ -1,0 +1,724 @@
+---
+title: "Analysis of Student Traits and Exam Performance"
+author: "Julius Spears"
+date: "2025-05-24"
+output: pdf_document
+---
+**Data Source:** Kaggle 
+
+**Data Format:** CSV
+
+**URL:** https://www.kaggle.com/datasets/jayaantanaath/student-habits-vs-academic-performance/data
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+  library(tidyverse)
+  library(dplyr)
+  library(ggplot2)
+  library(ISLR2)
+```
+
+# Introduction
+
+```{r Getting the Data, include=FALSE}
+studhabts <- read.csv("../data/student_habits_performance.csv")
+attach(studhabts) 
+```
+
+Student traits play a critical role in shaping a student's academic performance.
+In this project, I seek to provide insight into the strength and effect of specific traits on academic progress. This project utilizes simulated data based off of real-world trends of student habits across diverse populations. It consists of a sample of 1,000 student records, including traits such as study hours, sleep hours, diet, social media hours, and mental health ratings. The initial analysis will consist of examining how the study habits of students impacts their exam scores.
+\vspace{0.5em}
+
+# Study Hours and Exam Scores
+
+Study habits are a key predictor for academic performance. This section explores the relationship between the number of hours students study each day and their exam scores.
+
+We begin with summary statistics and a probability density estimate for daily study hours across the 1,000 students in the data set.
+
+\vspace{0.5em}
+**Summary Statistics**
+```{r Summary Stats of SHPD, echo=FALSE}
+summary(studhabts$study_hours_per_day)
+```
+
+\vspace{0.5em}
+**Standard Deviation**
+```{r SD of SHPD, echo=FALSE}
+sd(studhabts$study_hours_per_day)
+```
+
+\vspace{0.5em}
+**Variance**
+```{r Var of SHPD, echo=FALSE}
+var(studhabts$study_hours_per_day)
+```
+
+```{r KDE of SHPD, echo=FALSE}
+plot(density(studhabts$study_hours_per_day), lwd = 2, col = 'blue', 
+     xlab = 'Study Hours per Day', 
+       main = 'Probability Density for Study Hours per Day of Students')
+```
+
+From the data, the average study time is approximately 3.5 hours per day, with most students studying between 2 and 5 hours.
+
+\vspace{1.0em}
+
+To further analyze this trait, study hours were categorized into three groups:
+
+- **Below Average:** less than 2 hrs/day
+
+- **Average:** between 2 and 5 hrs/day
+
+- **Above Average:** more than 5 hrs/day
+
+\vspace{1.0em}
+
+```{r Split SHPD into three groups, include=FALSE}
+studhabts$studyamount <- ifelse(studhabts$study_hours_per_day < 2, "Below Average",
+"Above Average")
+studhabts$studyamount[studhabts$study_hours_per_day >= 2 & 
+                      studhabts$study_hours_per_day <= 5] <- "Average"
+studhabts$studyamount <- factor(studhabts$studyamount, levels = c("Below Average",
+"Average", "Above Average"))
+```
+
+```{r Colors of Study Amount, include=FALSE}
+Colors <- c('Below Average' = 'Red',
+            'Average' = 'Green',
+            'Above Average' = 'Blue')
+
+pointCol <- Colors[studhabts$studyamount]
+```
+
+```{r Head of SHPD and SA, echo=FALSE}
+head(studhabts$study_hours_per_day)
+head(studhabts$studyamount)
+```
+
+\vspace{2.0em}
+Summary statistics were then computed to examine differences in exam performance across the three study habit groups.
+
+\vspace{0.5em}
+
+**Mean**
+```{r Mean Exam Score by Study Amount, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$studyamount, mean)
+```
+\vspace{0.5em}
+**Median**
+```{r Median Exam Score by Study Amount, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$studyamount, median)
+```
+\vspace{0.5em}
+**Standard Deviation**
+```{r SD of Exam Scores by Study Amount, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$studyamount, sd)
+```
+\vspace{0.5em}
+**Variance**
+```{r Variance of Exam Scores by Study Amount, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$studyamount, var)
+```
+\vspace{2.0em}
+
+Exam scores clearly vary across study hour groups. Both the mean and median scores increase with more study time, indicating a strong positive association. Variances are close enough across groups to satisfy the equal variance assumption required for ANOVA (Analysis of Variance) testing.
+
+\vspace{2.0em}
+
+**ANOVA TEST RESULTS**
+
+An ANOVA test was conducted to evaluate whether the observed differences in group means are statistically significant.
+\vspace{1.0em}
+```{r ANOVA test for exam scores by study amount, echo=FALSE}
+summary(aov(studhabts$exam_score ~ studhabts$study_hours_per_day))
+```
+\vspace{1.0em}
+The resulting p-value is less than $2 \times 10^{-16}$, well below the conventional threshold of $0.05$. Therefore, we reject the null hypothesis that group means are equal, concluding that study time has a highly significant effect on exam performance. In particular, students who study more tend to achieve substantially higher scores.
+
+Below, we visualize the relationship using box plots and kernel density plots:
+
+```{r Boxplots of Exam Scores by Study Amount, echo=FALSE}
+boxplot(exam_score ~ studyamount, data = studhabts, xlab = 'Study Amount',
+        ylab = 'Exam Score', main = 'Boxplots of Exam Score Based on Study Amount'
+        , col = Colors)
+```
+\vspace{2.0em}
+
+
+```{r KDES of Exam Scores by Study Amount, echo=FALSE}
+scrbystudy <- split(studhabts$exam_score, studhabts$studyamount)
+
+plot(density(scrbystudy$`Above Average`), col = 'blue'
+     , xlim = c(10,100), ylim = c(0, 0.06), lwd = 2, xlab = 'Exam Scores', 
+     main = 'Probability Densities of Exam Scores Based on Study Amount')
+lines(density(scrbystudy$Average), col = 'green', lwd = 2)
+lines(density(scrbystudy$`Below Average`), col = 'red', lwd = 2)
+legend('topleft', legend = levels(studhabts$studyamount), lty = c(1,1,1), lwd = 2, 
+       col = Colors)
+```
+
+# Sleep Hours and Exam Scores
+
+Sleep is an essential component of student wellness and cognitive performance. This section analyzes how the number of sleep hours students get per day relates to their academic achievement, as measured by exam scores.
+
+
+We begin with summary statistics and a probability density estimate of daily sleep hours among the 1,000 students in the data set.
+
+\vspace{1.0em}
+**Summary Statistics**
+```{r Summary Statistics of SlpHrs, echo=FALSE}
+summary(studhabts$sleep_hours)
+```
+
+**Standard Deviation**
+```{r Std of SlpHrs, echo=FALSE}
+sd(studhabts$sleep_hours)
+```
+
+**Variance**
+```{r Var of SlpHrs, echo=FALSE}
+var(studhabts$sleep_hours)
+```
+
+\vspace{2.0em}
+
+```{r KDE of SlpHrs, echo=FALSE}
+plot(density(studhabts$sleep_hours), lwd = 2, col = 'blue', 
+     xlab = 'Sleep Hours per Day', 
+       main = 'Probability Density for Sleep Hours per Day of Students')
+```
+\vspace{2.0em}
+From the summary statistics and density plot, we observe that students sleep an average of approximately 6.5 hours per day, with most values falling between 5 and 8 hours.
+
+To assess how different sleep patterns relate to academic outcomes, sleep hours were categorized into three groups:
+\vspace{1.0em}
+
+- **Poor:** less than 5 hours/day
+
+- **Fair:** between 5 and 8 hours/day
+
+- **Great:** more than 8 hours/day
+
+\vspace{1.0em}
+
+```{r Split SlpHrs into Three Groups, include=FALSE}
+studhabts$sleep_quality <- ifelse(studhabts$sleep_hours < 5, "Poor", "Great")
+studhabts$sleep_quality[studhabts$sleep_hours >= 5 & 
+                          studhabts$sleep_hours <= 8] <- "Fair"
+studhabts$sleep_quality <- factor(studhabts$sleep_quality, levels = 
+                                    c("Poor", "Fair", "Great"))
+```
+
+```{r Colors of Sleep Quality, include=FALSE}
+Colors2 <- c("Poor" = "Red",
+             "Fair" = "Green",
+             "Great" = "Blue")
+
+pointCol2 <- Colors2[studhabts$sleep_quality]
+```
+
+```{r Head of SlpHrs and SlpQuality, echo=FALSE}
+head(studhabts$sleep_hours)
+head(studhabts$sleep_quality)
+```
+
+\vspace{1.0em}
+Summary statistics were then computed to examine differences in exam performance across the three sleep amount groups.
+
+\vspace{1.0em}
+
+**Mean**
+```{r Mean of Exam Scores by Sleep Quality, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$sleep_quality, mean)
+```
+\vspace{1.0em}
+**Median**
+```{r Median of Exam Scores by Sleep Quality, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$sleep_quality, median)
+```
+\vspace{1.0em}
+**Standard Deviation**
+```{r SD of Exam Scores by Sleep Quality, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$sleep_quality, sd)
+```
+\vspace{1.0em}
+**Variance**
+```{r Variance of Exam Scores by Sleep Quality, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$sleep_quality, var)
+```
+
+\vspace{2.0em}
+
+We observe some variation in exam score statistics across sleep quality groups. Both mean and median exam scores are highest among students with greater sleep, though the differences are not as pronounced as those observed in study hour comparisons. Variances remain sufficiently similar across groups to allow for ANOVA testing.
+
+\vspace{1.0em}
+**ANOVA TEST RESULTS**
+
+To assess the statistical significance of sleep quality on exam performance, an ANOVA test was conducted.
+
+```{r ANOVA test for Means of Exam Scores by Slp Qlty, echo=FALSE}
+summary(aov(exam_score ~ sleep_quality, data = studhabts))
+```
+\vspace{1.0em}
+
+The resulting p-value is $0.00771$, adequately below the conventional threshold of $0.05$. This indicates that we can reject the null hypothesis of equal group means. Thus, sleep duration has a statistically significant effect on exam performance. While the effect size appears smaller than that of study hours, it is still a meaningful factor to consider.
+
+Below, we visualize the relationship using box plots and kernel density plots:
+
+```{r Boxplots of Exam Scores by SlpQlty, echo=FALSE}
+boxplot(exam_score ~ sleep_quality, data = studhabts, col = Colors2
+        ,xlab = 'Sleep Quality', ylab = 'Exam Score', 
+        main = 'Boxplots of Effect of Sleep Quality on Exam Scores for Students')
+```
+\vspace{2.0em}
+
+```{r KDES of Exam Scores by SlpQlty, echo=FALSE}
+stdybyslp <- split(studhabts$exam_score, studhabts$sleep_quality)
+
+plot(density(stdybyslp$Fair), col = 'green', lwd = 2, xlab = 'Exam Scores',
+     main = 'Probability Densities of Exam Scores Based on Sleep Hours')
+lines(density(stdybyslp$Great), lwd = 2,  col = 'blue')
+lines(density(stdybyslp$Poor), lwd = 2, col = 'red')
+legend('topleft', legend = levels(studhabts$sleep_quality), 
+       lty = c(1,1,1), lwd = 2, col = c('red', 'green', 'blue'))
+```
+
+# Social Media Hours and Exam Scores
+
+In this section, I examine the relationship between students' daily social media usage and their academic performance. The goal is to determine whether time on social media is associated with any significant changes in exam scores.
+
+Summary statistics and a probability density estimate of daily social media hours among the 1,000 students in the data set are created.
+\vspace{2.0em}
+
+**Summary Statistics**
+```{r Summary of Social Media Hrs, echo=FALSE}
+summary(studhabts$social_media_hours)
+```
+
+\vspace{1.0em}
+**Standard Deviation**
+```{r SD of Social Media Hours, echo=FALSE}
+sd(studhabts$social_media_hours)
+```
+
+\vspace{1.0em}
+**Variance**
+```{r Var of Social Media Hrs, echo=FALSE}
+var(studhabts$social_media_hours)
+```
+
+\vspace{2.0em}
+
+```{r KDE of Social Media Hrs, echo=FALSE}
+plot(density(studhabts$social_media_hours), lwd = 2, col = 'blue',
+     xlab = 'Social Media Hours', 
+     main = 'Probability Density of Student Social Media Hours')
+```
+\vspace{2.0em}
+
+The summary statistics and density plot show that the average student spends around 2.5 hours per day on social media. Most values lie between 1.5 and 3.5 hours per day.
+
+To better analyze the impact, I categorized social media hours into three groups:
+\vspace{1.0em}
+
+- **Low:** Fewer than 1.5 hours per day
+
+- **Moderate:** Between 1.5 and 3.5 hours per day
+
+- **High:** Greater than 3.5 hours per day
+\vspace{2.0em}
+```{r Split SocMedia Actv in Groups, include=FALSE}
+studhabts$social_media_activity <- ifelse(social_media_hours < 1.5, "Low",
+                                          "High")
+studhabts$social_media_activity[studhabts$social_media_hours >= 1.5 &
+                                  studhabts$social_media_hours <= 3.5] <- "Moderate"
+studhabts$social_media_activity <- factor(studhabts$social_media_activity, levels =
+                                    c("Low", "Moderate", "High"))
+
+```
+
+```{r Colors for SocMediActv Groups, include=FALSE}
+pointCol4 <- Colors[studhabts$social_media_activity]
+```
+
+```{r Head of SocMediHrs and Activity, echo=FALSE}
+head(studhabts$social_media_hours)
+head(studhabts$social_media_activity)
+```
+
+\vspace{2.0em}
+Summary statistics were then computed to examine differences in exam performance across the three social media activity groups.
+
+\vspace{1.0em}
+**Mean:**
+```{r Mean ExmScors by SocMedAct, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$social_media_activity, mean)
+```
+\vspace{1.0em}
+**Median:**
+```{r Median ExmScors by SocMedAct, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$social_media_activity, median)
+```
+\vspace{1.0em}
+**Standard Deviation:**
+```{r SD of ExmScors by SocMedAct, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$social_media_activity, sd)
+```
+\vspace{1.0em}
+**Variance:**
+```{r Var of ExmScors by SocMedAct, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$social_media_activity, var)
+```
+
+\vspace{1.0em}
+There appears to be a slight downward trend in both the mean and median exam scores as social media usage increases. While the variance across groups differs slightly, it is still sufficiently similar to meet the assumption of equal variances required for an ANOVA test.
+
+\vspace{2.0em}
+
+**ANOVA TEST RESULTS**
+
+An ANOVA test is conducted to determine whether the differences in mean exam scores across the social media usage groups are statistically significant.
+
+```{r ANOVA TEST for ExmScores by SocMediActvity, echo=FALSE}
+summary(aov(exam_score ~ social_media_activity, data = studhabts))
+```
+\vspace{2.0em}
+
+The resulting p-value is $0.000223$, well below the conventional threshold of $0.05$. This indicates that we can reject the null hypothesis of equal group means. Thus, social media usage has a statistically significant effect on exam performance. Contrary to the two previous predictors, social media usage has a negative correlation with average exam scores rather than a positive correlation.
+
+To visualize this relationship, box plots and kernel density plots are below:
+\vspace{1.0em}
+
+```{r Boxplot of ExmScors by SocMedAct, echo=FALSE}
+boxplot(exam_score ~ social_media_activity, data = studhabts, col = Colors,
+        xlab = 'Social Media Activity', ylab = 'Exam Score', 
+        main = 'Social Media Activity of Students and Exam Scores')
+
+```
+\vspace{2.0em}
+
+```{r KDE of ExmScors by SocMedAct, echo=FALSE}
+scrbysocact <- split(studhabts$exam_score, studhabts$social_media_activity)
+
+plot(density(scrbysocact$High), col = 'blue', xlab = 'Exam Scores',
+     main = 'Probability Densities of Exam Scores Based on Social Media Activity',
+     lwd = 2, xlim = c(10, 100))
+lines(density(scrbysocact$Moderate), lwd = 2,  col = 'green')
+lines(density(scrbysocact$Low), lwd = 2, col = 'red')
+legend('topleft', legend = levels(studhabts$social_media_activity), 
+       lty = c(1,1,1), lwd = 2, col = Colors)
+```
+
+\vspace{1.0em}
+
+# Student Part Time Job Status and Exam Scores
+\vspace{1.0em}
+In this analysis, I shift my focus from numerical student traits to categorical traits, beginning with an examination of whether holding a part-time job impacts students’ academic performance. Specifically, I aim to determine if there is a significant difference in the average exam scores between students who have part-time jobs and those who do not.
+
+A frequency table displaying the number of students in each part-time job category is shown:
+
+\vspace{1.0em}
+
+```{r Table of Part-time job status, echo=FALSE}
+table(studhabts$part_time_job)
+```
+\vspace{1.0em}
+
+The table reveals that the number of students without part-time jobs is nearly four times greater than those who are employed part-time, a trend that aligns with typical student commitments.
+
+```{r Split Exam Score by Part-Time Job, include=FALSE}
+scrbyjob <- split(exam_score, part_time_job)
+```
+
+Summary statistics within each group are computed.
+\vspace{2.0em}
+
+**Summary Statistics**
+```{r Summary of Exam Scores by Part-Time Job Status, echo=FALSE}
+tapply(exam_score, part_time_job, summary)
+```
+\vspace{1.0em}
+**Standard Deviation**
+```{r SD of Exam Scores by Part-Time Job Status, echo=FALSE}
+tapply(exam_score, part_time_job, sd)
+```
+\vspace{1.0em}
+**Variance**
+```{r Var of Exam Scores by Part-Time Job Status, echo=FALSE}
+tapply(exam_score, part_time_job, var)
+```
+
+\vspace{2.0em}
+
+These descriptive statistics suggest minimal differences between the two groups’ exam scores, aside from slight variation in minimum scores. To further assess whether the observed differences are statistically significant, I perform a two-sample t-test. With the similarity in variances, the assumption of equal variance is reasonable.
+
+\vspace{2.0em}
+**TWO-SAMPLE T-TEST RESULTS**
+```{r TWO-SAMPLE T-TEST of Exam Scores by Part-Time Job Status, echo=FALSE}
+t.test(exam_score ~ part_time_job, data = studhabts, var.equal = T)
+```
+\vspace{1.0em}
+
+The resulting p-value of $0.4006$ is well above the conventional significance threshold of $0.05$. Therefore, we fail to reject the null hypothesis, indicating no statistically significant difference in mean exam scores between students with and without part-time jobs. In other words, employment status does not appear to influence academic performance.
+
+To visualize this result, I include box plots and kernel density plots below:
+
+\vspace{1.0em}
+
+```{r Boxplots of Exam Scores by Part-Time Job Status, echo=FALSE}
+boxplot(exam_score ~ part_time_job, data = studhabts, col = c('red', 'blue')
+        , xlab = 'Part Time Job Status', ylab = 'Exam Scores'
+        , main = 'Boxplots of Exam Scores Based on Part Time Job Status')
+```
+
+```{r KDES of Exam Scores by Part-Time Job Status, echo=FALSE}
+plot(density(scrbyjob$Yes), 
+  main = "Probability Densities of Exam Scores Based on Part-Time Job Status", 
+  xlab = 'Exam Scores', lwd = 2, col = 'blue', xlim = c(10, 100))
+lines(density(scrbyjob$No), col = 'red', lwd = 2)
+legend('topleft', legend  = levels(as.factor(part_time_job)), lty = c(1,1,1),
+       lwd = 2, col = c('red', 'blue'), title = 'Part Time Job Status')
+```
+
+# Mental Health Rating and Exam Scores
+\vspace{1.0em}
+
+Mental health is increasingly recognized as a vital component of student well-being and success, making it an important variable to investigate in the context of exam scores. I seek to determine whether mental health actually does have a statistically significant impact on student exam scores.
+
+The analysis begins by examining the frequency of distinct mental health ratings.
+A table and bar plot display these frequencies below.
+
+\vspace{1.0em}
+```{r MHR Freq. Table, echo=FALSE}
+table(studhabts$mental_health_rating)
+```
+\vspace{2.0em}
+```{r MHR Freq. Barplot, echo=FALSE}
+barplot(table(studhabts$mental_health_rating), ylim = c(0, max(table(studhabts$mental_health_rating)) + 10),
+        xlab = "Mental Health Rating", ylab = "Frequency", 
+        main = "Frequency of Mental Health Ratings", col = 'Salmon')
+```
+\vspace{1.0em}
+
+The ratings appear to be approximately uniformly distributed, with there being similar frequencies for each rating. This ensures a balanced comparison across all ratings. For further analysis, mental health ratings were grouped into three categories.
+\vspace{2.0em}
+
+- **Poor:** ratings 1-3
+
+- **Normal:** ratings 4-6
+
+- **Great:** ratings 7-10
+\vspace{2.0em}
+
+```{r MHR into three groups, include=FALSE}
+studhabts$MHQuality <- ifelse(mental_health_rating < 4, 'Poor', 'Great')
+studhabts$MHQuality[studhabts$mental_health_rating >= 4 & 
+                      studhabts$mental_health_rating <= 6] <- "Normal"
+studhabts$MHQuality <- factor(studhabts$MHQuality, 
+                              levels = c('Poor', 'Normal', 'Great'))
+```
+
+```{r Colors for Groups, include=FALSE}
+Colors3 <- c('Poor' = 'Red',
+             'Normal' = 'Green',
+             'Great' = 'Blue')
+
+pointCol3 <- Colors3[studhabts$MHQuality]
+```
+
+```{r Head of MHQ and MHR, echo=FALSE}
+head(studhabts$mental_health_rating)
+head(studhabts$MHQuality)
+```
+
+\vspace{1.0em}
+Summary statistics were then computed to determine differences in exam performance across all three groups. 
+\vspace{1.0em}
+
+**Mean**
+```{r Mean Exam Score by MHQ, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$MHQuality, mean)
+```
+\vspace{1.0em}
+**Median**
+```{r Median Exam Score by MHQ, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$MHQuality, median)
+```
+\vspace{1.0em}
+**Standard Deviation**
+```{r SD of Exam Scores by MHQ, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$MHQuality, sd)
+```
+\vspace{1.0em}
+**Variance**
+```{r Variance of Exam Scores by MHQ, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$MHQuality, var)
+```
+\vspace{2.0em}
+
+Both the mean and median exam scores increase with higher mental health ratings, suggesting a positive relationship between mental well-being and academic performance. While the group variances differ slightly, they are sufficiently similar to meet the equal variance assumption required for ANOVA testing.
+
+\vspace{2.0em}
+
+**ANOVA TEST RESULTS**
+
+An ANOVA test was conducted to evaluate whether the observed differences in group means are statistically significant.
+```{r ANOVA test of Exam Scores by MHQ, echo=FALSE}
+summary(aov(studhabts$exam_score ~ studhabts$MHQuality))
+```
+
+\vspace{1.0em}
+
+The p-value is less than $2 \times 10^{-16}$, well below the significance threshold of 0.05. This allows us to confidently reject the null hypothesis that the group means are equal. We conclude that mental health quality has a statistically significant effect on exam scores. In particular, students with higher mental health ratings tend to achieve moderately higher scores on average.
+
+The following box plots and kernel density plots visually reinforce this relationship:
+
+```{r Boxplots of Exam Scores by MHQ, echo=FALSE}
+boxplot(exam_score ~ MHQuality, data = studhabts, 
+        xlab = "Mental Health Rating", ylab = "Exam Score"
+        , main = "Exam Score Based on Mental Health Rating for Students"
+        , col = Colors3)
+```
+\vspace{2.0em}
+
+```{r KDES of Exam Score by MHQ, echo=FALSE}
+scrbymhq <- split(studhabts$exam_score, studhabts$MHQuality)
+
+plot(density(scrbymhq$Great), col = 'blue', lwd = 2, xlim = c(10, 100), 
+     xlab = 'Exam Scores', 
+     main = 'Probability Densities of Exam Scores based on Mental Health Quality')
+lines(density(scrbymhq$Normal), col = 'green', lwd = 2)
+lines(density(scrbymhq$Poor), col = 'red', lwd = 2)
+legend('topleft', legend = levels(studhabts$MHQuality), 
+       lty = c(1,1,1), lwd = 2, col = c('red', 'green', 'blue'))
+```
+
+# Parental Educational Level and Exam Scores
+\vspace{1.0em}
+
+In this final analysis, I examine how a student's academic performance is influenced by the highest educational attainment of their parents. This factor is often considered a strong predictor of academic outcomes, based on the belief that parental education shapes values, resources, and support for learning.
+
+A frequency table summarizing the distribution of students by their parents’ highest education level is constructed.
+
+\vspace{2.0em}
+```{r Split Exam Scores by PEL  , include=FALSE}
+studhabts$parental_education_level <- factor(studhabts$parental_education_level,
+                        levels = c('None', 'High School', 'Bachelor', 'Master'))
+
+pelexmscr <- split(studhabts$exam_score, studhabts$parental_education_level)
+```
+
+```{r Frequency Table of PEL of Students, echo=FALSE}
+table(studhabts$parental_education_level)
+```
+\vspace{2.0em}
+
+The table shows that the majority of students have parents whose highest education level is either a high school diploma or a bachelor's degree, which reflects typical educational attainment trends.
+
+Summary statistics for the exam scores across each parental education category are
+shown:
+
+\vspace{1.0em}
+**Summary Statistics**
+```{r Summary of Exam Scores by PEL, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$parental_education_level, summary)
+```
+\vspace{1.0em}
+**Standard Deviation**
+```{r SD of Exam Scores by PEL, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$parental_education_level, sd)
+```
+\vspace{1.0em}
+**Variance**
+```{r Var of Exam Scores by PEL, echo=FALSE}
+tapply(studhabts$exam_score, studhabts$parental_education_level, var)
+```
+
+\vspace{2.0em}
+The descriptive statistics reveal some variation in exam score distributions across categories, but the differences in group means and medians are not pronounced. To determine whether these differences are statistically significant, I conduct an ANOVA (Analysis of Variance) test.
+
+\vspace{1.0em}
+**ANOVA TEST RESULTS**
+
+An ANOVA test is conducted to determine whether the differences in mean exam scores across the parental education level groups are statistically significant.
+
+\vspace{1.0em}
+```{r ANOVA TEST of Exam Scores by PEL, echo=FALSE}
+summary(aov(exam_score ~ parental_education_level, data = studhabts))
+```
+\vspace{1.0em}
+With a p-value of $0.581$, the test fails to reject the null hypothesis that the group means are equal. This suggests that any differences in exam scores among the parental education groups are likely due to random variation rather than a true underlying effect. Thus, the highest level of parental education does not appear to significantly influence students' average exam scores.
+
+Below are box plots and kernel density plots that provide a visual representation of this analysis:
+\vspace{2.0em}
+
+```{r Boxplots of Exam Scores by PEL, echo=FALSE}
+boxplot(studhabts$exam_score ~ studhabts$parental_education_level,
+        xlab = 'Parental Education Level', ylab = 'Exam Scores',
+        main = 'Exam Scores Based on Parental Education Level of Students',
+        col = c('red', 'orange', 'blue', 'purple'))
+```
+\vspace{2.0em}
+
+```{r KDES of Exam Scores by PEL, echo=FALSE}
+plot(density(pelexmscr$Master), col = 'purple', lwd = 2, xlim = c(10, 100),
+     xlab = 'Exam Scores', 
+     main = 'Probability Densities of Exam Scores Based on Parental Education Level')
+lines(density(pelexmscr$Bachelor), col = 'blue', lwd = 2)
+lines(density(pelexmscr$`High School`), col = 'orange', lwd = 2)
+lines(density(pelexmscr$None), col = 'red', lwd = 2)
+legend('topleft', legend = levels(studhabts$parental_education_level),
+       lty = c(1, 1, 1), lwd = 2, col = c('red', 'orange', 'blue', 'purple'))
+```
+
+# Findings
+This study analyzed how various student-related traits influence academic performance, as measured by exam scores. The predictors examined included both numerical and categorical variables: mental health rating, study hours per day, sleep hours per day, social media hours per day, part-time job status, and highest parental education level.
+\vspace{1.0em}
+
+**Summary of Key Relationships**
+
+The analysis revealed the following patterns of association:
+
+\vspace{2.0em}
+**Traits Positively Associated with Exam Scores**
+\vspace{1.0em}
+
+- ***Study Hours per Day***
+
+  Showed the strongest positive correlation with exam scores. As expected, students   who studied more consistently achieved higher average scores.
+
+\vspace{1.0em}
+
+- ***Mental Health Rating***
+
+  Demonstrated a moderate positive correlation. Students reporting better mental      health tended to perform better academically, suggesting a meaningful link between   well-being and academic success.
+
+\vspace{1.0em}
+
+- ***Sleep Hours per Day***
+
+  Displayed a weak positive correlation. While the effect was less pronounced,        students with more sleep generally had higher average exam scores.
+
+\vspace{2.0em}
+
+**Trait Negatively Associated with  Exam Scores**
+\vspace{1.0em}
+
+- ***Social Media Hours per Day***
+
+  Showed a weak negative correlation with exam scores. Students who spent more time   on social media tended to have slightly lower average scores, though the            relationship was not strong.
+
+\vspace{2.0em}
+
+**Traits Not Significantly Associated with Exam Scores**
+\vspace{1.0em}
+
+- ***Part-time Job Status***
+
+  The difference in average exam scores between students with and without part-time   jobs was not statistically significant. This suggests that holding a part-time job   does not materially impact academic performance.
+
+\vspace{1.0em}
+
+- ***Parental Education Level***
+
+  Contrary to common assumptions, no significant difference was found in exam scores   across different parental education levels. This indicates that a student’s         academic outcomes are not strongly tied to the educational background of their      parents—at least within this data set.
